@@ -73,6 +73,8 @@ export default function CreatePostPage() {
     
     try {
       // Create property entry
+      console.log('Current images:', images);
+      console.log('Inserting into properties:', { ...formData, user_id: userId });
       const { data: property, error: propertyError } = await supabase
         .from('properties')
         .insert({
@@ -89,7 +91,11 @@ export default function CreatePostPage() {
         .select()
         .single();
       
-      if (propertyError) throw propertyError;
+      if (propertyError) {
+        console.error('Properties insert failed:', propertyError);
+        throw propertyError;
+      }
+      console.log('Properties insert succeeded:', property);
       
       // Insert property images
       const imageInserts = images.map((url, index) => ({
@@ -97,22 +103,28 @@ export default function CreatePostPage() {
         image_url: url,
         is_primary: index === 0
       }));
+      console.log('Inserting into property_images:', imageInserts);
       
-      const { error: imagesError } = await supabase
-        .from('property_images')
-        .insert(imageInserts);
-      
-      if (imagesError) throw imagesError;
-      
-      toast.success('Property posted successfully!');
-      router.push('/');
-    } catch (error) {
-      console.error('Error creating post:', error);
-      toast.error('Failed to create property post');
-    } finally {
-      setIsLoading(false);
+      const { data: imagesData, error: imagesError } = await supabase
+      .from('property_images')
+      .insert(imageInserts)
+      .select();
+
+    if (imagesError) {
+      console.error('Property_images insert failed:', imagesError);
+      throw imagesError;
     }
-  };
+    console.log('Property_images insert succeeded:', imagesData);
+
+    toast.success('Property posted successfully!');
+    router.push('/');
+  } catch (error) {
+    console.error('Error creating post:', error);
+    toast.error('Failed to create property post');
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   return (
     <motion.div
