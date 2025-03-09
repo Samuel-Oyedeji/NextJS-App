@@ -82,19 +82,13 @@ export default function Navbar() {
           
           {/* Navigation Items */}
           <nav className="hidden md:flex items-center space-x-4">
-            <Link
-              href="/"
-              className="flex items-center px-3 py-2 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-            >
+            <Link href="/" className="flex items-center px-3 py-2 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
               <FiHome className="mr-1" />
               <span>Home</span>
             </Link>
             
             {user && (
-              <Link
-                href="/create-post"
-                className="flex items-center px-3 py-2 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-              >
+              <Link href="/create-post" className="flex items-center px-3 py-2 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                 <FiPlus className="mr-1" />
                 <span>Post Property</span>
               </Link>
@@ -103,8 +97,8 @@ export default function Navbar() {
             {/* Theme Toggle */}
             <button
               onClick={() => {
+                console.log('Theme toggle button clicked');
                 toggleTheme();
-                console.log('Toggle button clicked');
               }}
               className="flex items-center px-3 py-2 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
               aria-label="Toggle theme"
@@ -120,12 +114,12 @@ export default function Navbar() {
               <div className="flex items-center space-x-2">
                 <Link href="/login">
                   <Button variant="outline" size="sm" className="dark:border-gray-600 dark:text-gray-300">
-                    Log in
+                    Log In
                   </Button>
                 </Link>
                 <Link href="/signup">
                   <Button size="sm" className="dark:bg-gray-700 dark:text-gray-100 dark:hover:bg-gray-600">
-                    Sign up
+                    Sign Up
                   </Button>
                 </Link>
               </div>
@@ -175,7 +169,7 @@ export default function Navbar() {
                       >
                         <div className="flex items-center">
                           <FiLogOut className="mr-2" />
-                          <span>Log out</span>
+                          <span>Log Out</span>
                         </div>
                       </button>
                     </motion.div>

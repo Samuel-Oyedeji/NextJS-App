@@ -16,6 +16,7 @@ interface Property {
   square_feet: number | null;
   created_at: string;
   property_images: { image_url: string; is_primary: boolean }[];
+  contact_phone: string | null;
 }
 
 export default async function HomePage() {
@@ -45,7 +46,14 @@ export default async function HomePage() {
           Connect with others, discover properties, and share your real estate journey on the social platform built for property enthusiasts.
         </p>
         <div className="flex justify-center space-x-4">
-          {!isLoggedIn && (
+          {isLoggedIn ? (
+            <Link
+              href="/create-post"
+              className="bg-white text-blue-700 px-5 py-2 rounded-md font-medium hover:bg-blue-50 transition-colors"
+            >
+              Post a Property
+            </Link>
+          ) : (
             <>
               <Link
                 href="/signup"
@@ -60,14 +68,6 @@ export default async function HomePage() {
                 Log In
               </Link>
             </>
-          )}
-          {isLoggedIn && (
-            <Link
-              href="/create-post"
-              className="bg-white text-blue-700 px-5 py-2 rounded-md font-medium hover:bg-blue-50 transition-colors"
-            >
-              Post a Property
-            </Link>
           )}
         </div>
       </section>

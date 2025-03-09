@@ -5,7 +5,7 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
-import { FiDollarSign, FiHome, FiMap, FiBed, FiBath, FiMaximize2 } from 'react-icons/fi';
+import { FiDollarSign, FiHome, FiMap, FiBed, FiBath, FiMaximize2, FiPhone } from 'react-icons/fi';
 import { supabase } from '@/lib/supabase/client';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
@@ -25,6 +25,7 @@ export default function CreatePostPage() {
     bedrooms: '',
     bathrooms: '',
     squareFeet: '',
+    contactPhone: '', // Added phone number field
   });
   
   useEffect(() => {
@@ -73,8 +74,6 @@ export default function CreatePostPage() {
     
     try {
       // Create property entry
-      console.log('Current images:', images);
-      console.log('Inserting into properties:', { ...formData, user_id: userId });
       const { data: property, error: propertyError } = await supabase
         .from('properties')
         .insert({
@@ -87,6 +86,7 @@ export default function CreatePostPage() {
           bedrooms: formData.bedrooms ? parseInt(formData.bedrooms) : null,
           bathrooms: formData.bathrooms ? parseInt(formData.bathrooms) : null,
           square_feet: formData.squareFeet ? parseInt(formData.squareFeet) : null,
+          contact_phone: formData.contactPhone || null, // Added phone number
         })
         .select()
         .single();
@@ -95,49 +95,45 @@ export default function CreatePostPage() {
         console.error('Properties insert failed:', propertyError);
         throw propertyError;
       }
-      console.log('Properties insert succeeded:', property);
       
       // Insert property images
       const imageInserts = images.map((url, index) => ({
         property_id: property.id,
         image_url: url,
-        is_primary: index === 0
+        is_primary: index === 0,
       }));
-      console.log('Inserting into property_images:', imageInserts);
       
-      const { data: imagesData, error: imagesError } = await supabase
-      .from('property_images')
-      .insert(imageInserts)
-      .select();
+      const { error: imagesError } = await supabase
+        .from('property_images')
+        .insert(imageInserts);
 
-    if (imagesError) {
-      console.error('Property_images insert failed:', imagesError);
-      throw imagesError;
+      if (imagesError) {
+        console.error('Property_images insert failed:', imagesError);
+        throw imagesError;
+      }
+
+      toast.success('Property posted successfully!');
+      router.push('/');
+    } catch (error) {
+      console.error('Error creating post:', error);
+      toast.error('Failed to create property post');
+    } finally {
+      setIsLoading(false);
     }
-    console.log('Property_images insert succeeded:', imagesData);
-
-    toast.success('Property posted successfully!');
-    router.push('/');
-  } catch (error) {
-    console.error('Error creating post:', error);
-    toast.error('Failed to create property post');
-  } finally {
-    setIsLoading(false);
-  }
-};
+  };
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="max-w-2xl mx-auto bg-white shadow-md rounded-lg p-8"
+      className="max-w-2xl mx-auto bg-white dark:bg-gray-800 shadow-md rounded-lg p-8"
     >
-      <h1 className="text-2xl font-bold mb-6 text-center">List Your Property</h1>
+      <h1 className="text-2xl font-bold mb-6 text-center text-gray-800 dark:text-gray-100">List Your Property</h1>
       
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Basic Information */}
         <div>
-          <h2 className="text-lg font-semibold mb-3">Property Details</h2>
+          <h2 className="text-lg font-semibold mb-3 text-gray-700 dark:text-gray-300">Property Details</h2>
           <div className="grid md:grid-cols-2 gap-4">
             <Input
               name="title"
@@ -156,9 +152,9 @@ export default function CreatePostPage() {
                 name="isForRent"
                 checked={formData.isForRent}
                 onChange={handleChange}
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded"
               />
-              <label htmlFor="isForRent" className="text-sm text-gray-700">
+              <label htmlFor="isForRent" className="text-sm text-gray-700 dark:text-gray-300">
                 For Rent (Uncheck for Sale)
               </label>
             </div>
@@ -170,7 +166,7 @@ export default function CreatePostPage() {
             value={formData.description}
             onChange={handleChange}
             rows={4}
-            className="mt-4 w-full border border-gray-300 rounded-md p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="mt-4 w-full border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 rounded-md p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
         </div>
         
@@ -188,7 +184,7 @@ export default function CreatePostPage() {
               required
               icon={<FiDollarSign className="text-gray-400" />}
             />
-            <span className="absolute right-3 top-11 text-sm text-gray-500">
+            <span className="absolute right-3 top-11 text-sm text-gray-500 dark:text-gray-400">
               {formData.isForRent ? 'per month' : 'total'}
             </span>
           </div>
@@ -239,10 +235,29 @@ export default function CreatePostPage() {
             icon={<FiMaximize2 className="text-gray-400" />}
           />
         </div>
+
+        {/* Contact Phone Number */}
+        <div>
+          <Input
+            name="contactPhone"
+            label="Contact Phone Number"
+            type="tel"
+            placeholder="+1 (123) 456-7890"
+            value={formData.contactPhone}
+            onChange={handleChange}
+            fullWidth
+            icon={<FiPhone className="text-gray-400" />}
+            pattern="^\+?[1-9]\d{1,14}$"
+            title="Enter a valid phone number (e.g., +11234567890)"
+          />
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            Optional. Provide a phone number for interested buyers/renters to contact you.
+          </p>
+        </div>
         
         {/* Image Upload */}
         <div>
-          <h2 className="text-lg font-semibold mb-3">Property Images</h2>
+          <h2 className="text-lg font-semibold mb-3 text-gray-700 dark:text-gray-300">Property Images</h2>
           <ImageUploader
             bucket="property-images"
             onImageUploaded={handleImageUploaded}
