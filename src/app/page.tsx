@@ -23,9 +23,10 @@ export default async function HomePage() {
   const supabase = createServerSupabaseClient();
   const { data: { session } } = await supabase.auth.getSession();
   const isLoggedIn = !!session;
+  const userId = session?.user.id;
 
   // Fetch properties server-side
-  const { data: properties, error } = await supabase
+  const { data: properties, error: propertiesError } = await supabase
     .from('properties')
     .select(`
       *,
@@ -33,9 +34,34 @@ export default async function HomePage() {
     `)
     .order('created_at', { ascending: false });
 
-  if (error) {
-    console.error('Error fetching properties:', error);
+  if (propertiesError) {
+    console.error('Error fetching properties:', propertiesError);
   }
+
+  // Fetch initial likes data
+  const { data: likesData, error: likesError } = await supabase
+    .from('likes')
+    .select('property_id, user_id');
+
+  if (likesError) {
+    console.error('Error fetching likes:', likesError);
+  }
+
+  // Calculate initial like counts per property
+  const initialLikes = (likesData || []).reduce((acc, like) => {
+    acc[like.property_id] = (acc[like.property_id] || 0) + 1;
+    return acc;
+  }, {} as { [key: string]: number });
+
+  // Determine which properties the current user has liked
+  const userLiked = userId
+    ? (likesData || []).reduce((acc, like) => {
+        if (like.user_id === userId) {
+          acc[like.property_id] = true;
+        }
+        return acc;
+      }, {} as { [key: string]: boolean })
+    : {};
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
@@ -77,7 +103,11 @@ export default async function HomePage() {
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Recent Properties</h2>
         </div>
-        <PropertyList properties={properties || []} />
+        <PropertyList
+          properties={properties || []}
+          initialLikes={initialLikes}
+          userLiked={userLiked}
+        />
       </section>
     </div>
   );
