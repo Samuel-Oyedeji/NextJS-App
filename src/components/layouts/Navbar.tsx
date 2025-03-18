@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiHome, FiPlus, FiBell, FiMessageSquare, FiUser, FiLogOut, FiSun, FiMoon } from 'react-icons/fi';
+import { FaHome } from 'react-icons/fa'; // Added FaHome import
 import { supabase } from '@/lib/supabase/client';
 import { useTheme } from '@/lib/ThemeContext';
 import { User } from '@/types';
@@ -161,6 +162,15 @@ export default function Navbar() {
                         <div className="flex items-center">
                           <FiUser className="mr-2" />
                           <span>Profile</span>
+                        </div>
+                      </Link>
+                      <Link
+                        href={`/profile/${user?.id}/my-posts`}
+                        className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                      >
+                        <div className="flex items-center">
+                          <FaHome className="mr-2" />
+                          <span>My Posts</span>
                         </div>
                       </Link>
                       <button

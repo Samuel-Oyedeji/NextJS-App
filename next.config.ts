@@ -1,4 +1,9 @@
 import type { NextConfig } from 'next';
+import withBundleAnalyzer from '@next/bundle-analyzer';
+
+const bundleAnalyzer = withBundleAnalyzer({
+  enabled: process.env.ANALYZE === 'true',
+});
 
 const nextConfig: NextConfig = {
   images: {
@@ -6,10 +11,10 @@ const nextConfig: NextConfig = {
       {
         protocol: 'https',
         hostname: 'uoxcxkquwakpdmpiyvzy.supabase.co',
-        pathname: '/storage/v1/object/public/**', // Optional but recommended
+        pathname: '/storage/v1/object/public/**',
       },
     ],
   },
 };
 
-export default nextConfig;
+export default bundleAnalyzer(nextConfig);
