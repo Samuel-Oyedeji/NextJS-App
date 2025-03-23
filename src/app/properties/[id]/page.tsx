@@ -3,11 +3,13 @@
 import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
-import { motion } from 'framer-motion'; // Specific import
+import { motion } from 'framer-motion';
 import { FaBed, FaBath, FaExpand, FaPhone, FaHeart, FaShare } from 'react-icons/fa';
 import { FiMapPin } from 'react-icons/fi';
+import { fetchSupabase } from '@/lib/supabase/fetch';
 import { supabase } from '@/lib/supabase/client';
 import toast from 'react-hot-toast';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 const CommentsSection = dynamic(() => import('@/components/CommentsSection'), {
   ssr: false,
@@ -53,30 +55,35 @@ export default function PropertyDetailPage({ params: paramsPromise }: { params: 
         setUserId(session?.user.id || null);
 
         const [
-          { data: propertyData, error: propertyError },
-          { count: likeCount, error: likeError },
-          { data: commentsData, error: commentsError }
+          propertyData,
+          commentsData,
+          { count: likeCount },
         ] = await Promise.all([
-          supabase.from('properties').select('*, property_images (image_url, is_primary)').eq('id', params.id).single(),
+          fetchSupabase<Property>(
+            'properties',
+            qb => qb.select('*, property_images (image_url, is_primary)').eq('id', params.id).single(),
+            { revalidate: 3600 }
+          ),
+          fetchSupabase<Comment[]>(
+            'comments',
+            qb => qb.select('*, users (username)').eq('property_id', params.id).order('created_at', { ascending: true }),
+            { revalidate: 300 }
+          ),
           supabase.from('likes').select('*', { count: 'exact', head: true }).eq('property_id', params.id),
-          supabase.from('comments').select('*, users (username)').eq('property_id', params.id).order('created_at', { ascending: true })
         ]);
 
-        if (propertyError) throw propertyError;
-        if (likeError) console.error('Error fetching likes:', likeError);
-        if (commentsError) console.error('Error fetching comments:', commentsError);
-
         setProperty(propertyData);
-        setLikes(likeCount || 0);
         setComments(commentsData || []);
+        setLikes(likeCount || 0);
+
         if (session?.user.id) {
-          const { data: userLike, error: userLikeError } = await supabase
+          const { data: userLike } = await supabase
             .from('likes')
             .select('id')
             .eq('property_id', params.id)
             .eq('user_id', session.user.id)
             .single();
-          setIsLiked(!!userLike && !userLikeError);
+          setIsLiked(!!userLike);
         }
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -133,87 +140,94 @@ export default function PropertyDetailPage({ params: paramsPromise }: { params: 
   const primaryImage = property.property_images.find(img => img.is_primary)?.image_url || property.property_images[0]?.image_url;
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 py-12">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8 }}
-        className="max-w-5xl mx-auto px-4"
-      >
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          {primaryImage && (
-            <div className="md:col-span-2">
-              <Image
-                src={primaryImage}
-                alt={property.title}
-                width={800}
-                height={600}
-                sizes="(max-width: 768px) 100vw, 66vw"
-                className="w-full h-96 object-cover rounded-lg shadow-md"
-              />
-            </div>
-          )}
-          <div className="grid grid-cols-2 md:grid-cols-1 gap-4">
-            {property.property_images.filter(img => !img.is_primary).slice(0, 4).map((img, index) => (
-              <div key={index} className="card">
+    <ErrorBoundary>
+      <div className="min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 py-12">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8 }}
+          className="max-w-5xl mx-auto px-4"
+        >
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            {primaryImage && (
+              <div className="md:col-span-2">
                 <Image
-                  src={img.image_url}
-                  alt={`${property.title} - Image ${index + 1}`}
-                  width={200}
-                  height={150}
-                  sizes="(max-width: 768px) 50vw, 33vw"
-                  className="w-full h-24 md:h-32 object-cover rounded-lg shadow-sm"
+                  src={primaryImage}
+                  alt={property.title}
+                  width={800}
+                  height={600}
+                  sizes="(max-width: 768px) 100vw, 66vw"
+                  className="w-full h-96 object-cover rounded-lg shadow-md"
+                  placeholder="blur"
+                  blurDataURL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mN8/+F9PQAI8wNPJ7lNiQAAAABJRU5ErkJggg==" // Low-quality placeholder
+                  priority // Load primary image eagerly
                 />
               </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
-          <h1 className="text-3xl font-bold mb-4 text-gray-800 dark:text-gray-100">{property.title}</h1>
-          <p className="text-lg text-gray-600 dark:text-gray-300 mb-6">{property.description || 'No description available.'}</p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <p className="text-2xl font-semibold text-blue-600 dark:text-blue-400 mb-2">
-                ${property.price.toLocaleString()} {property.is_for_rent ? '/mo' : ''}
-              </p>
-              {property.location && (
-                <p className="flex items-center text-gray-500 dark:text-gray-400">
-                  <FiMapPin className="mr-2" /> {property.location}
-                </p>
-              )}
-              {property.contact_phone && (
-                <p className="flex items-center text-gray-500 dark:text-gray-400 mt-2">
-                  <FaPhone className="mr-2" /> {property.contact_phone}
-                </p>
-              )}
-            </div>
-            <div className="flex space-x-6">
-              {property.bedrooms && <p className="flex items-center text-gray-500 dark:text-gray-400"><FaBed className="mr-2" /> {property.bedrooms} Bed</p>}
-              {property.bathrooms && <p className="flex items-center text-gray-500 dark:text-gray-400"><FaBath className="mr-2" /> {property.bathrooms} Bath</p>}
-              {property.square_feet && <p className="flex items-center text-gray-500 dark:text-gray-400"><FaExpand className="mr-2" /> {property.square_feet} sqft</p>}
+            )}
+            <div className="grid grid-cols-2 md:grid-cols-1 gap-4">
+              {property.property_images.filter(img => !img.is_primary).slice(0, 4).map((img, index) => (
+                <div key={index} className="card">
+                  <Image
+                    src={img.image_url}
+                    alt={`${property.title} - Image ${index + 1}`}
+                    width={200}
+                    height={150}
+                    sizes="(max-width: 768px) 50vw, 33vw"
+                    className="w-full h-24 md:h-32 object-cover rounded-lg shadow-sm"
+                    placeholder="blur"
+                    blurDataURL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mN8/+F9PQAI8wNPJ7lNiQAAAABJRU5ErkJggg=="
+                  />
+                </div>
+              ))}
             </div>
           </div>
-          <div className="flex items-center space-x-6 mt-6">
-            <button
-              onClick={handleLike}
-              className="flex items-center space-x-1 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-            >
-              <FaHeart className={isLiked ? 'text-blue-600 dark:text-blue-400' : ''} />
-              <span>{likes}</span>
-            </button>
-            <button
-              onClick={handleShare}
-              className="flex items-center space-x-1 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-            >
-              <FaShare />
-              <span>Share</span>
-            </button>
-          </div>
-        </div>
 
-        <CommentsSection propertyId={params.id} initialComments={comments} userId={userId} />
-      </motion.div>
-    </div>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
+            <h1 className="text-3xl font-bold mb-4 text-gray-800 dark:text-gray-100">{property.title}</h1>
+            <p className="text-lg text-gray-600 dark:text-gray-300 mb-6">{property.description || 'No description available.'}</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <p className="text-2xl font-semibold text-blue-600 dark:text-blue-400 mb-2">
+                  ${property.price.toLocaleString()} {property.is_for_rent ? '/mo' : ''}
+                </p>
+                {property.location && (
+                  <p className="flex items-center text-gray-500 dark:text-gray-400">
+                    <FiMapPin className="mr-2" /> {property.location}
+                  </p>
+                )}
+                {property.contact_phone && (
+                  <p className="flex items-center text-gray-500 dark:text-gray-400 mt-2">
+                    <FaPhone className="mr-2" /> {property.contact_phone}
+                  </p>
+                )}
+              </div>
+              <div className="flex space-x-6">
+                {property.bedrooms && <p className="flex items-center text-gray-500 dark:text-gray-400"><FaBed className="mr-2" /> {property.bedrooms} Bed</p>}
+                {property.bathrooms && <p className="flex items-center text-gray-500 dark:text-gray-400"><FaBath className="mr-2" /> {property.bathrooms} Bath</p>}
+                {property.square_feet && <p className="flex items-center text-gray-500 dark:text-gray-400"><FaExpand className="mr-2" /> {property.square_feet} sqft</p>}
+              </div>
+            </div>
+            <div className="flex items-center space-x-6 mt-6">
+              <button
+                onClick={handleLike}
+                className="flex items-center space-x-1 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              >
+                <FaHeart className={isLiked ? 'text-blue-600 dark:text-blue-400' : ''} />
+                <span>{likes}</span>
+              </button>
+              <button
+                onClick={handleShare}
+                className="flex items-center space-x-1 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              >
+                <FaShare />
+                <span>Share</span>
+              </button>
+            </div>
+          </div>
+
+          <CommentsSection propertyId={params.id} initialComments={comments} userId={userId} />
+        </motion.div>
+      </div>
+    </ErrorBoundary>
   );
 }
