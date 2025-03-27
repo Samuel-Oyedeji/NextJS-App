@@ -1,4 +1,4 @@
-// src/components/auth/SignupForm.tsx
+// src/components/auth/SignupForm.tsx (Simplified)
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -21,7 +21,6 @@ export default function SignupForm() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-    // Clear error when user types
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
@@ -29,28 +28,20 @@ export default function SignupForm() {
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
-    
     if (!formData.email) newErrors.email = 'Email is required';
     else if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = 'Email is invalid';
-    
     if (!formData.password) newErrors.password = 'Password is required';
     else if (formData.password.length < 6) newErrors.password = 'Password must be at least 6 characters';
-    
     if (!formData.fullName) newErrors.fullName = 'Full name is required';
-    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!validate()) return;
-    
     setIsLoading(true);
-    
     try {
-      // Sign up with Supabase Auth
       const { data, error } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -60,11 +51,8 @@ export default function SignupForm() {
           },
         },
       });
-      
       if (error) throw error;
-      
       if (data.user) {
-        // Create user profile in our users table
         const { error: profileError } = await supabase
           .from('users')
           .insert({
@@ -72,9 +60,7 @@ export default function SignupForm() {
             email: formData.email,
             full_name: formData.fullName,
           });
-        
         if (profileError) throw profileError;
-        
         toast.success('Account created successfully! Please verify your email.');
         router.push('/login');
       }
@@ -89,10 +75,11 @@ export default function SignupForm() {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="max-w-md w-full mx-auto bg-white p-8 rounded-lg shadow-md"
+      className="max-w-md w-full mx-auto p-8" // Removed bg, rounded, shadow
     >
-      <h2 className="text-2xl font-bold text-center mb-6">Create your account</h2>
-      
+      <h2 className="text-2xl font-bold text-center mb-6 text-gray-900 dark:text-gray-100">
+        Create your account
+      </h2>
       <form onSubmit={handleSubmit}>
         <Input
           name="fullName"
@@ -103,7 +90,6 @@ export default function SignupForm() {
           error={errors.fullName}
           fullWidth
         />
-        
         <Input
           name="email"
           type="email"
@@ -114,7 +100,6 @@ export default function SignupForm() {
           error={errors.email}
           fullWidth
         />
-        
         <Input
           name="password"
           type="password"
@@ -125,20 +110,18 @@ export default function SignupForm() {
           error={errors.password}
           fullWidth
         />
-        
         <Button
           type="submit"
           isLoading={isLoading}
           fullWidth
-          className="mt-4"
+          className="mt-4 bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-700 dark:hover:bg-blue-800"
         >
           Sign Up
         </Button>
       </form>
-      
-      <p className="mt-6 text-center text-sm text-gray-600">
+      <p className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
         Already have an account?{' '}
-        <Link href="/login" className="text-blue-600 hover:text-blue-800 font-medium">
+        <Link href="/login" className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium">
           Log in
         </Link>
       </p>

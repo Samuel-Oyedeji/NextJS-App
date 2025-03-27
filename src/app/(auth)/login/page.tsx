@@ -22,7 +22,7 @@ export default function LoginPage() {
   }, [router]);
   
   return (
-    <div className="max-w-md mx-auto my-12">
+    <div className="max-w-md mx-auto my-12 bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md">
       <LoginForm />
     </div>
   );
