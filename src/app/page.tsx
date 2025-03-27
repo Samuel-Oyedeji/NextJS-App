@@ -1,14 +1,17 @@
-import React from 'react';
+'use client';
+
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import PropertyList from '@/components/properties/PropertyList';
-import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { supabase } from '@/lib/supabase/client';
+import { useFilter } from '@/components/FilterProvider';
 
-// Define Property interface for TypeScript
 interface Property {
   id: string;
   title: string;
   description: string | null;
   price: number;
+  currency: string;
   is_for_rent: boolean;
   location: string | null;
   bedrooms: number | null;
@@ -19,53 +22,80 @@ interface Property {
   contact_phone: string | null;
 }
 
-export default async function HomePage() {
-  const supabase = createServerSupabaseClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  const isLoggedIn = !!session;
-  const userId = session?.user.id;
+export default function HomePage() {
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [initialLikes, setInitialLikes] = useState<{ [key: string]: number }>({});
+  const [userLiked, setUserLiked] = useState<{ [key: string]: boolean }>({});
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
+  const { filters } = useFilter();
 
-  // Fetch properties server-side
-  const { data: properties, error: propertiesError } = await supabase
-    .from('properties')
-    .select(`
-      *,
-      property_images (image_url, is_primary)
-    `)
-    .order('created_at', { ascending: false });
+  useEffect(() => {
+    async function fetchInitialData() {
+      const { data: { session } } = await supabase.auth.getSession();
+      setIsLoggedIn(!!session);
+      setUserId(session?.user.id || null);
 
-  if (propertiesError) {
-    console.error('Error fetching properties:', propertiesError);
-  }
+      const { data: propertiesData, error: propertiesError } = await supabase
+        .from('properties')
+        .select('*, property_images(image_url, is_primary)')
+        .order('created_at', { ascending: false });
+      if (propertiesError) console.error('Error fetching properties:', propertiesError);
+      else setProperties(propertiesData || []);
 
-  // Fetch initial likes data
-  const { data: likesData, error: likesError } = await supabase
-    .from('likes')
-    .select('property_id, user_id');
+      const { data: likesData, error: likesError } = await supabase
+        .from('likes')
+        .select('property_id, user_id');
+      if (likesError) console.error('Error fetching likes:', likesError);
+      else {
+        const likesCount = (likesData || []).reduce((acc, like) => {
+          acc[like.property_id] = (acc[like.property_id] || 0) + 1;
+          return acc;
+        }, {} as { [key: string]: number });
+        setInitialLikes(likesCount);
 
-  if (likesError) {
-    console.error('Error fetching likes:', likesError);
-  }
-
-  // Calculate initial like counts per property
-  const initialLikes = (likesData || []).reduce((acc, like) => {
-    acc[like.property_id] = (acc[like.property_id] || 0) + 1;
-    return acc;
-  }, {} as { [key: string]: number });
-
-  // Determine which properties the current user has liked
-  const userLiked = userId
-    ? (likesData || []).reduce((acc, like) => {
-        if (like.user_id === userId) {
-          acc[like.property_id] = true;
+        if (session?.user.id) {
+          const userLikes = (likesData || []).reduce((acc, like) => {
+            if (like.user_id === session.user.id) acc[like.property_id] = true;
+            return acc;
+          }, {} as { [key: string]: boolean });
+          setUserLiked(userLikes);
         }
-        return acc;
-      }, {} as { [key: string]: boolean })
-    : {};
+      }
+    }
+    fetchInitialData();
+  }, []);
+
+  useEffect(() => {
+    async function fetchFilteredProperties() {
+      let query = supabase
+        .from('properties')
+        .select('*, property_images(image_url, is_primary)')
+        .order('created_at', { ascending: false });
+
+      if (filters.location) query = query.eq('location', filters.location); // Exact match for state
+      if (filters.minPrice) query = query.gte('price', parseFloat(filters.minPrice));
+      if (filters.maxPrice) query = query.lte('price', parseFloat(filters.maxPrice));
+      if (filters.bedrooms) query = query.eq('bedrooms', parseInt(filters.bedrooms));
+      if (filters.bathrooms) query = query.eq('bathrooms', parseInt(filters.bathrooms));
+      if (filters.isForRent) query = query.eq('is_for_rent', filters.isForRent === 'true');
+      if (filters.minSquareFeet) query = query.gte('square_feet', parseFloat(filters.minSquareFeet));
+      if (filters.maxSquareFeet) query = query.lte('square_feet', parseFloat(filters.maxSquareFeet));
+      if (filters.datePosted) {
+        const daysAgo = new Date();
+        daysAgo.setDate(daysAgo.getDate() - parseInt(filters.datePosted));
+        query = query.gte('created_at', daysAgo.toISOString());
+      }
+
+      const { data, error } = await query;
+      if (error) console.error('Error fetching filtered properties:', error);
+      else setProperties(data || []);
+    }
+    fetchFilteredProperties();
+  }, [filters]);
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-      {/* Hero Section */}
       <section className="bg-gradient-to-r from-blue-700 to-indigo-800 rounded-xl p-8 mb-8 mx-4 text-white shadow-xl">
         <h1 className="text-3xl font-bold mb-3 text-center">Find Your Dream Property</h1>
         <p className="text-blue-100 mb-6 max-w-2xl mx-auto text-center">
@@ -97,14 +127,13 @@ export default async function HomePage() {
           )}
         </div>
       </section>
-
-      {/* Property Feed */}
       <section className="max-w-7xl mx-auto px-4 mb-8">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Recent Properties</h2>
+          <span className="text-gray-600 dark:text-gray-400">Showing {properties.length} properties</span>
         </div>
         <PropertyList
-          properties={properties || []}
+          properties={properties}
           initialLikes={initialLikes}
           userLiked={userLiked}
         />

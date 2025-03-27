@@ -8,6 +8,7 @@ import toast from 'react-hot-toast';
 import { FiDollarSign, FiMap, FiMaximize2, FiPhone } from 'react-icons/fi';
 import { FaBed, FaBath } from 'react-icons/fa';
 import { supabase } from '@/lib/supabase/client';
+import { nigerianStates } from '@/data/nigerianStates';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import ImageUploader from '@/components/common/ImageUploader';
@@ -22,6 +23,7 @@ export default function CreatePostPage() {
     title: '',
     description: '',
     price: '',
+    currency: 'NGN',
     isForRent: false,
     location: '',
     bedrooms: '',
@@ -54,15 +56,25 @@ export default function CreatePostPage() {
   }, [router]);
 
   const handleImageUploaded = (url: string) => {
-    setImages(prev => [...prev, url]);
+    setImages((prev) => [...prev, url]);
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value, type } = e.target as HTMLInputElement;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value,
-    }));
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
+    const { name, value } = e.target;
+    // Check if the target is an HTMLInputElement and handle checkbox separately
+    if ('type' in e.target && e.target.type === 'checkbox') {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: (e.target as HTMLInputElement).checked,
+      }));
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value,
+      }));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -73,8 +85,8 @@ export default function CreatePostPage() {
       return;
     }
 
-    if (!formData.title || !formData.price || images.length === 0) {
-      toast.error('Please fill in all required fields and upload at least one image');
+    if (!formData.title || !formData.price || !formData.location || images.length === 0) {
+      toast.error('Please fill in all required fields (Title, Price, Location) and upload at least one image');
       return;
     }
 
@@ -88,6 +100,7 @@ export default function CreatePostPage() {
           title: formData.title,
           description: formData.description,
           price: parseFloat(formData.price),
+          currency: formData.currency,
           is_for_rent: formData.isForRent,
           location: formData.location,
           bedrooms: formData.bedrooms ? parseInt(formData.bedrooms) : null,
@@ -127,6 +140,12 @@ export default function CreatePostPage() {
       setIsLoading(false);
     }
   };
+
+  const currencies = [
+    { value: 'NGN', label: 'Nigerian Naira (₦)' },
+    { value: 'USD', label: 'US Dollar ($)' },
+    { value: 'EUR', label: 'Euro (€)' },
+  ];
 
   return (
     <ErrorBoundary>
@@ -194,15 +213,39 @@ export default function CreatePostPage() {
               </span>
             </div>
 
-            <Input
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Currency</label>
+              <select
+                name="currency"
+                value={formData.currency}
+                onChange={handleChange}
+                className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
+              >
+                {currencies.map((currency) => (
+                  <option key={currency.value} value={currency.value}>
+                    {currency.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Location</label>
+            <select
               name="location"
-              label="Location"
-              placeholder="City, State"
               value={formData.location}
               onChange={handleChange}
-              fullWidth
-              icon={<FiMap className="text-gray-400" />}
-            />
+              required
+              className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Select a state</option>
+              {nigerianStates.map((state) => (
+                <option key={state} value={state}>
+                  {state}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="grid md:grid-cols-3 gap-4">

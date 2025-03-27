@@ -1,3 +1,4 @@
+// src/components/layouts/Navbar.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -6,12 +7,14 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiHome, FiPlus, FiBell, FiMessageSquare, FiUser, FiLogOut, FiSun, FiMoon } from 'react-icons/fi';
-import { FaHome } from 'react-icons/fa'; // Added FaHome import
+import { FaHome } from 'react-icons/fa';
 import { supabase } from '@/lib/supabase/client';
 import { useTheme } from '@/lib/ThemeContext';
 import { User } from '@/types';
 import toast from 'react-hot-toast';
 import Button from '@/components/ui/Button';
+import SearchBar from '@/components/common/SearchBar';
+import { useFilter } from '@/components/FilterProvider';
 
 export default function Navbar() {
   const router = useRouter();
@@ -19,19 +22,18 @@ export default function Navbar() {
   const [loading, setLoading] = useState(true);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const { theme, toggleTheme } = useTheme();
+  const { setFilters } = useFilter();
 
   useEffect(() => {
     async function getUser() {
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        
         if (session?.user) {
           const { data, error } = await supabase
             .from('users')
             .select('*')
             .eq('id', session.user.id)
             .single();
-            
           if (error) throw error;
           setUser(data);
         }
@@ -41,20 +43,12 @@ export default function Navbar() {
         setLoading(false);
       }
     }
-    
     getUser();
-    
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && session) {
-        getUser();
-      } else if (event === 'SIGNED_OUT') {
-        setUser(null);
-      }
+      if (event === 'SIGNED_IN' && session) getUser();
+      else if (event === 'SIGNED_OUT') setUser(null);
     });
-    
-    return () => {
-      authListener.subscription.unsubscribe();
-    };
+    return () => authListener.subscription.unsubscribe();
   }, []);
 
   const handleLogout = async () => {
@@ -68,11 +62,14 @@ export default function Navbar() {
     }
   };
 
+  const handleFilterChange = (filters: any) => {
+    setFilters(filters);
+  };
+
   return (
     <header className="bg-white dark:bg-gray-800 shadow-md transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          {/* Logo and Brand */}
+        <div className="flex items-center h-16">
           <div className="flex items-center">
             <Link href="/" className="flex items-center">
               <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-pink-600 text-transparent bg-clip-text">
@@ -80,22 +77,20 @@ export default function Navbar() {
               </span>
             </Link>
           </div>
-          
-          {/* Navigation Items */}
-          <nav className="hidden md:flex items-center space-x-4">
+          <div className="flex-1 flex justify-center">
+            <SearchBar onFilterChange={handleFilterChange} />
+          </div>
+          <nav className="hidden md:flex items-center space-x-4"> {/* Removed ml-4 */}
             <Link href="/" className="flex items-center px-3 py-2 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
               <FiHome className="mr-1" />
               <span>Home</span>
             </Link>
-            
             {user && (
               <Link href="/create-post" className="flex items-center px-3 py-2 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                 <FiPlus className="mr-1" />
                 <span>Post Property</span>
               </Link>
             )}
-
-            {/* Theme Toggle */}
             <button
               onClick={() => {
                 console.log('Theme toggle button clicked');
@@ -108,8 +103,6 @@ export default function Navbar() {
               <span>{theme === 'light' ? 'Dark Mode' : 'Light Mode'}</span>
             </button>
           </nav>
-          
-          {/* Auth/User Section */}
           <div className="flex items-center space-x-2">
             {!loading && !user ? (
               <div className="flex items-center space-x-2">
@@ -146,7 +139,6 @@ export default function Navbar() {
                     )}
                   </div>
                 </button>
-                
                 <AnimatePresence>
                   {dropdownOpen && (
                     <motion.div
