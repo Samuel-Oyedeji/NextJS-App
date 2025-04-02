@@ -96,7 +96,7 @@ export default function PropertyCard({ property, currentUserId }: PropertyCardPr
         
         // src/components/properties/PropertyCard.tsx (continued)
         <div className="absolute top-2 right-2 bg-white rounded-full px-3 py-1 text-sm font-bold shadow">
-          {property.is_for_rent ? `${formattedPrice}/mo` : formattedPrice}
+          {property.is_for_rent ? `${formattedPrice}/yr` : formattedPrice}
         </div>
         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent p-4">
           <div className="text-white font-semibold">{property.title}</div>

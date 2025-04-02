@@ -209,7 +209,7 @@ export default function CreatePostPage() {
                 icon={<FiDollarSign className="text-gray-400" />}
               />
               <span className="absolute right-3 top-11 text-sm text-gray-500 dark:text-gray-400">
-                {formData.isForRent ? 'per month' : 'total'}
+                {formData.isForRent ? 'per year' : 'total'}
               </span>
             </div>
 

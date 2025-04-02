@@ -188,7 +188,7 @@ export default function PropertyDetailPage({ params: paramsPromise }: { params: 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <p className="text-2xl font-semibold text-blue-600 dark:text-blue-400 mb-2">
-                  ${property.price.toLocaleString()} {property.is_for_rent ? '/mo' : ''}
+                  ${property.price.toLocaleString()} {property.is_for_rent ? '/yr' : ''}
                 </p>
                 {property.location && (
                   <p className="flex items-center text-gray-500 dark:text-gray-400">
